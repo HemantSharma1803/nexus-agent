@@ -91,6 +91,7 @@ export default function App() {
   const [completedTaskModal, setCompletedTaskModal] = useState<TaskRecord | null>(null);
 
   const cancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+  const executionRef = useRef(false);
 
   // Sync to localStorage
   useEffect(() => {
@@ -107,48 +108,65 @@ export default function App() {
 
   const handleRunTask = async (goalOverride?: string) => {
     const goal = (goalOverride ?? taskInput).trim();
-    if (!goal) return;
+    if (!goal || executionRef.current) return;
     if (goalOverride) setTaskInput(goal);
 
-    cancelRef.current.cancelled = false;
+    executionRef.current = true;
+    cancelRef.current = { cancelled: false };
     setAgentStatus('PLANNING');
 
-    // Reset sandbox for clean run
+    // Reset sandbox for a clean, deterministic run.
     setSandboxState(DEFAULT_SANDBOX_STATE);
     setCandidatesEvaluated([]);
-
-    // Reset steps
     setSteps(DEFAULT_PLAN_STEPS.map((s) => ({ ...s, status: 'QUEUED' })));
+    setCompletedTaskModal(null);
 
-    // Fresh activities
     setActivities([
       {
         id: `act-start-${Date.now()}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        message: `Task initiated: "${taskInput}". Synthesizing execution plan.`,
+        message: `Task initiated: "${goal}". Synthesizing execution plan.`,
         type: 'info',
       },
     ]);
 
-    await executeNexusTask({
-      goal,
-      adaptiveRecoveryEnabled,
-      onStepsChange: setSteps,
-      onActivity: (act) => setActivities((prev) => [...prev, act]),
-      onSandboxChange: setSandboxState,
-      onStatusChange: setAgentStatus,
-      onCandidatesEvaluated: setCandidatesEvaluated,
-      onFinish: (taskRecord, sessionRecord) => {
-        setTaskHistory((prev) => [taskRecord, ...prev]);
-        setSessions((prev) => [sessionRecord, ...prev]);
-        setCompletedTaskModal(taskRecord);
-      },
-      cancelSignal: cancelRef.current,
-    });
+    try {
+      await executeNexusTask({
+        goal,
+        adaptiveRecoveryEnabled,
+        onStepsChange: setSteps,
+        onActivity: (act) => setActivities((prev) => [...prev, act]),
+        onSandboxChange: setSandboxState,
+        onStatusChange: setAgentStatus,
+        onCandidatesEvaluated: setCandidatesEvaluated,
+        onFinish: (taskRecord, sessionRecord) => {
+          setTaskHistory((prev) => [taskRecord, ...prev]);
+          setSessions((prev) => [sessionRecord, ...prev]);
+          setCompletedTaskModal(taskRecord);
+        },
+        cancelSignal: cancelRef.current,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown execution error';
+      console.error('NEXUS task execution failed:', error);
+      setAgentStatus('READY');
+      setActivities((prev) => [
+        ...prev,
+        {
+          id: `act-error-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          message: `Execution stopped safely: ${message}`,
+          type: 'warning',
+        },
+      ]);
+    } finally {
+      executionRef.current = false;
+    }
   };
 
   const handleResetDemo = () => {
     cancelRef.current.cancelled = true;
+    executionRef.current = false;
     setAgentStatus('READY');
     setSandboxState(DEFAULT_SANDBOX_STATE);
     setCandidatesEvaluated([]);
