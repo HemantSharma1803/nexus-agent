@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { TaskRecord } from '../types';
-import { History, CheckCircle2, Clock, Trash2, ArrowRight } from 'lucide-react';
+import { History, Clock, Trash2, ArrowRight, Search, Filter } from 'lucide-react';
 
 interface TaskHistoryScreenProps {
   tasks: TaskRecord[];
@@ -15,6 +15,14 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
   onClearHistory,
   onNewTask,
 }) => {
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'Completed' | 'Recovered' | 'Failed'>('all');
+  const filteredTasks = useMemo(() => tasks.filter((task) => {
+    const matchesQuery = !query.trim() || `${task.goal} ${task.resultSummary} ${task.scenarioTitle}`.toLowerCase().includes(query.toLowerCase());
+    const matchesFilter = filter === 'all' || task.status === filter;
+    return matchesQuery && matchesFilter;
+  }), [tasks, query, filter]);
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -46,6 +54,24 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
         </div>
       </div>
 
+      {tasks.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex-1 flex items-center gap-2 rounded-lg border border-[#1e2230] bg-[#0e1017] px-2.5">
+            <Search className="w-3.5 h-3.5 text-gray-500" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search goals, results, scenarios..." className="w-full bg-transparent py-2 text-xs text-white outline-none placeholder:text-gray-600" />
+          </div>
+          <div className="flex items-center gap-1.5 rounded-lg border border-[#1e2230] bg-[#0e1017] px-2.5">
+            <Filter className="w-3.5 h-3.5 text-gray-500" />
+            <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} className="bg-transparent py-2 text-xs text-gray-300 outline-none">
+              <option value="all">All statuses</option>
+              <option value="Completed">Completed</option>
+              <option value="Recovered">Recovered</option>
+              <option value="Failed">Failed</option>
+            </select>
+          </div>
+        </div>
+      )}
+
       {tasks.length === 0 ? (
         <div className="text-center py-16 border border-[#1e2230] rounded-xl bg-[#0e1017] p-8">
           <History className="w-8 h-8 text-gray-500 mx-auto mb-2" />
@@ -62,7 +88,7 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
         </div>
       ) : (
         <div className="space-y-2.5">
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <div
               key={task.id}
               onClick={() => onSelectTask(task)}
@@ -98,6 +124,14 @@ export const TaskHistoryScreen: React.FC<TaskHistoryScreenProps> = ({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {tasks.length > 0 && filteredTasks.length === 0 && (
+        <div className="text-center py-12 border border-[#1e2230] rounded-xl bg-[#0e1017]">
+          <Search className="w-7 h-7 text-gray-600 mx-auto mb-2" />
+          <div className="text-xs font-semibold text-gray-300">No matching executions</div>
+          <div className="text-[11px] text-gray-500 mt-1">Try another search term or status.</div>
         </div>
       )}
     </div>

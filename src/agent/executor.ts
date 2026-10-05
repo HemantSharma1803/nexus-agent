@@ -117,9 +117,7 @@ export async function executeNexusTask({
     if (isCompareScenario) return a.price - b.price || b.rating - a.rating;
     return b.rating - a.rating || b.reviewsCount - a.reviewsCount;
   });
-  const targetProduct: Product = isDataExtract
-    ? INITIAL_PRODUCTS[0]
-    : rankedProducts[0] || INITIAL_PRODUCTS.find((p) => p.id === 'k75') || INITIAL_PRODUCTS[0];
+  const targetProduct: Product = rankedProducts[0] || INITIAL_PRODUCTS.find((p) => p.inStock) || INITIAL_PRODUCTS[0];
   currentSteps[6].label = cartRequested ? 'Add to cart' : isCompareScenario ? 'Prepare recommendation' : isFindVerifyScenario ? 'Confirm stock & rating' : 'Compile findings';
 
   // 1. PLANNING PHASE
@@ -382,7 +380,7 @@ export async function executeNexusTask({
     scenarioTitle,
     status: recoveryOccurred ? 'Recovered' : 'Completed',
     duration: totalDuration,
-    actionsCount: cartRequested ? 12 : 10,
+    actionsCount: cartRequested ? 12 : 9,
     productsEvaluated: candidateList.length,
     selectedProduct: targetProduct,
     resultSummary: isCompareScenario
@@ -391,7 +389,7 @@ export async function executeNexusTask({
       ? `${targetProduct.name} meets the requested rating and price criteria; stock verified.`
       : isDataExtract
       ? `Catalog findings compiled; leading match: ${targetProduct.name}.`
-      : `${targetProduct.name} added to cart at ₹${targetProduct.price.toLocaleString('en-IN')}.`,
+      : `${targetProduct.name} matched the requested constraints at ₹${targetProduct.price.toLocaleString('en-IN')}${cartRequested ? ' and was added to the sandbox cart' : ''}.`,
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     confidence: 96,
     steps: [...currentSteps],

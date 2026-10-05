@@ -1,11 +1,12 @@
 import React from 'react';
-import { ArrowRight, Loader2, RotateCcw, ShieldCheck, Check } from 'lucide-react';
+import { ArrowRight, RotateCcw, ShieldCheck, Square } from 'lucide-react';
 
 interface TaskInputHeroProps {
   taskInput: string;
   onTaskInputChange: (val: string) => void;
   isRunning: boolean;
   onRunTask: () => void;
+  onCancelTask: () => void;
   onResetDemo: () => void;
   onToggleViewPlan: () => void;
   showPlanPreview: boolean;
@@ -41,6 +42,7 @@ export const TaskInputHero: React.FC<TaskInputHeroProps> = ({
   onTaskInputChange,
   isRunning,
   onRunTask,
+  onCancelTask,
   onResetDemo,
   onToggleViewPlan,
   showPlanPreview,
@@ -52,8 +54,8 @@ export const TaskInputHero: React.FC<TaskInputHeroProps> = ({
       {/* Main Headline & Supporting Text */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight">
-          Give NEXUS a task.<br />
-          <span className="text-gray-400">It handles the web.</span>
+          Autonomous task workspace.<br />
+          <span className="text-gray-400">Plan. Operate. Adapt. Verify.</span>
         </h1>
         <p className="text-xs sm:text-sm text-gray-300 mt-1 max-w-2xl leading-relaxed">
           Describe what you want done in plain language. NEXUS plans the workflow, operates the browser, adapts when things change, and verifies the result.
@@ -111,11 +113,11 @@ export const TaskInputHero: React.FC<TaskInputHeroProps> = ({
             ) : (
               <button
                 type="button"
-                disabled
-                className="px-5 py-2 rounded-lg text-xs sm:text-sm font-medium text-blue-300 bg-blue-950/60 border border-blue-500/40 flex items-center gap-2 cursor-wait"
+                onClick={onCancelTask}
+                className="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-rose-200 bg-rose-950/40 hover:bg-rose-900/50 border border-rose-500/30 flex items-center gap-2 cursor-pointer active:scale-95 transition-colors"
               >
-                <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-                <span>Operating...</span>
+                <Square className="w-3.5 h-3.5 fill-current" />
+                <span>STOP</span>
               </button>
             )}
           </div>

@@ -109,8 +109,8 @@ export const AgentActivityPanel: React.FC<AgentActivityPanelProps> = ({
               ))}
             </div>
             <div className="mt-2 pt-1.5 border-t border-[#1e2333] text-[10px] text-blue-300 flex items-center justify-between">
-              <span className="font-mono font-bold uppercase">Best Valid Match: NEXUS MK-87</span>
-              <span className="text-gray-400 font-sans">Highest rating in budget</span>
+              <span className="font-mono font-bold uppercase">Best Valid Match: {candidates.find((c) => c.isBestMatch)?.name ?? '—'}</span>
+              <span className="text-gray-400 font-sans">Selected by task policy</span>
             </div>
           </div>
         )}

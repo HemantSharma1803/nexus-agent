@@ -106,9 +106,17 @@ export default function App() {
     } catch (e) {}
   }, [sessions]);
 
+  const isRunning =
+    agentStatus === 'PLANNING' ||
+    agentStatus === 'OPERATING' ||
+    agentStatus === 'RECOVERING' ||
+    agentStatus === 'VERIFYING';
+
   const handleRunTask = async (goalOverride?: string) => {
     const goal = (goalOverride ?? taskInput).trim();
-    if (!goal || executionRef.current) return;
+    // Guard both the ref and visible status so a stale execution state can never
+    // make RUN TASK appear unresponsive after a failed/interrupted run.
+    if (!goal || executionRef.current || isRunning) return;
     if (goalOverride) setTaskInput(goal);
 
     executionRef.current = true;
@@ -140,6 +148,7 @@ export default function App() {
         onStatusChange: setAgentStatus,
         onCandidatesEvaluated: setCandidatesEvaluated,
         onFinish: (taskRecord, sessionRecord) => {
+          setAgentStatus('COMPLETED');
           setTaskHistory((prev) => [taskRecord, ...prev]);
           setSessions((prev) => [sessionRecord, ...prev]);
           setCompletedTaskModal(taskRecord);
@@ -150,6 +159,7 @@ export default function App() {
       const message = error instanceof Error ? error.message : 'Unknown execution error';
       console.error('NEXUS task execution failed:', error);
       setAgentStatus('READY');
+      executionRef.current = false;
       setActivities((prev) => [
         ...prev,
         {
@@ -162,6 +172,22 @@ export default function App() {
     } finally {
       executionRef.current = false;
     }
+  };
+
+  const handleCancelTask = () => {
+    if (!executionRef.current) return;
+    cancelRef.current.cancelled = true;
+    executionRef.current = false;
+    setAgentStatus('READY');
+    setActivities((prev) => [
+      ...prev,
+      {
+        id: `act-cancel-${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        message: 'Execution cancelled by operator. Sandbox state preserved for inspection.',
+        type: 'warning',
+      },
+    ]);
   };
 
   const handleResetDemo = () => {
@@ -209,12 +235,6 @@ export default function App() {
     } catch (e) { /* Storage may be unavailable in restricted browser contexts. */ }
   };
 
-  const isRunning =
-    agentStatus === 'PLANNING' ||
-    agentStatus === 'OPERATING' ||
-    agentStatus === 'RECOVERING' ||
-    agentStatus === 'VERIFYING';
-
   return (
     <div className="min-h-screen bg-[#090a0f] text-gray-200 flex font-sans selection:bg-blue-600/30 selection:text-blue-200">
       {/* Compact Left Sidebar */}
@@ -249,6 +269,7 @@ export default function App() {
                 onTaskInputChange={setTaskInput}
                 isRunning={isRunning}
                 onRunTask={handleRunTask}
+                onCancelTask={handleCancelTask}
                 onResetDemo={handleResetDemo}
                 onToggleViewPlan={() => setShowPlanPreview((prev) => !prev)}
                 showPlanPreview={showPlanPreview}
@@ -257,6 +278,44 @@ export default function App() {
                   setAdaptiveRecoveryEnabled((prev) => !prev)
                 }
               />
+
+              {/* Operator telemetry: turns the landing view into a working console */}
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5">
+                {[
+                  { label: 'Completed runs', value: taskHistory.length, hint: taskHistory.length ? `${taskHistory.filter((t) => t.status === 'Recovered').length} recovered` : 'No runs yet' },
+                  { label: 'Avg confidence', value: taskHistory.length ? `${Math.round(taskHistory.reduce((sum, t) => sum + t.confidence, 0) / taskHistory.length)}%` : '—', hint: 'Across verified tasks' },
+                  { label: 'Browser sessions', value: sessions.length, hint: isRunning ? '1 session active' : 'Sandbox idle' },
+                  { label: 'Agent mode', value: adaptiveRecoveryEnabled ? 'Adaptive' : 'Standard', hint: adaptiveRecoveryEnabled ? 'Self-healing enabled' : 'Recovery disabled' },
+                ].map((metric) => (
+                  <div key={metric.label} className="rounded-lg border border-[#1e2230] bg-[#0e1017] px-3 py-2.5">
+                    <div className="text-[10px] uppercase tracking-wider font-mono text-gray-500">{metric.label}</div>
+                    <div className="flex items-end justify-between gap-2 mt-1">
+                      <span className="text-lg font-bold text-white font-mono">{metric.value}</span>
+                      <span className="text-[10px] text-gray-500 text-right">{metric.hint}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {showPlanPreview && (
+                <section className="rounded-xl border border-blue-500/20 bg-blue-950/10 p-3.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="text-xs font-semibold text-blue-200 uppercase tracking-wider font-mono">Execution plan preview</h3>
+                      <p className="text-[10px] text-gray-500 mt-0.5">NEXUS will convert the instruction into observable browser actions.</p>
+                    </div>
+                    <span className="text-[10px] font-mono text-blue-400">{steps.length} stages</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {steps.map((step) => (
+                      <div key={step.id} className="rounded-lg border border-[#20283a] bg-[#0e131e] px-2.5 py-2">
+                        <div className="text-[9px] font-mono text-gray-600">0{step.number}</div>
+                        <div className="text-[11px] text-gray-200 mt-0.5">{step.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {/* Minimal 3-Stage Architecture Strip */}
               <HowItWorks />
@@ -287,6 +346,30 @@ export default function App() {
                   />
                 </div>
               </div>
+
+              {taskHistory.length > 0 && (
+                <section className="border border-[#1e2230] rounded-xl bg-[#0e1017] p-3.5">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div>
+                      <h3 className="text-xs font-semibold text-gray-200 uppercase tracking-wider font-mono">Recent executions</h3>
+                      <p className="text-[10px] text-gray-500 mt-0.5">Persistent audit trail from the operator workspace.</p>
+                    </div>
+                    <button onClick={() => setCurrentTab('task_history')} className="text-[11px] text-blue-400 hover:text-blue-300 font-medium">View all →</button>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-2">
+                    {taskHistory.slice(0, 3).map((task) => (
+                      <button key={task.id} onClick={() => setCompletedTaskModal(task)} className="text-left p-2.5 rounded-lg border border-[#202536] bg-[#10131c] hover:bg-[#151a27] hover:border-[#2b344b] transition-colors">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-mono text-gray-500">{task.timestamp} · {task.duration}</span>
+                          <span className="text-[9px] font-mono text-emerald-400">{task.confidence}%</span>
+                        </div>
+                        <div className="text-xs font-semibold text-white mt-1 truncate">{task.scenarioTitle}</div>
+                        <div className="text-[10px] text-gray-400 mt-1 line-clamp-2">{task.resultSummary}</div>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
           )}
 

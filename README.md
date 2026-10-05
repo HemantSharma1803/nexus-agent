@@ -37,3 +37,15 @@ The repository includes `.github/workflows/deploy.yml`. Push to `main` or `maste
 - Reset reliably cancels an in-progress execution.
 - The app uses a relative module entry in `index.html`, making the static entry safer for GitHub Pages subpaths.
 - TypeScript is pinned to the stable 5.x toolchain for reproducible CI installation.
+
+
+## Operator capabilities
+
+- Natural-language task execution with an observable 8-stage plan
+- Live sandbox browser with search, budget filtering, sorting, selection and cart controls
+- Adaptive recovery simulation when the target UI control changes
+- Stop/cancel control that safely returns the workspace to READY state
+- Persistent task history and browser sessions via localStorage
+- Execution telemetry, confidence, recovery counts and recent-run audit cards
+- Search/filterable task history and inspectable completion results
+- Deterministic demo catalog for repeatable judging and presentations

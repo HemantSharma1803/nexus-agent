@@ -8,7 +8,11 @@ import {
   Lock,
   X,
   Check,
-  MousePointer
+  MousePointer,
+  Minus,
+  Plus,
+  Trash2,
+  SlidersHorizontal
 } from 'lucide-react';
 
 interface SandboxBrowserProps {
@@ -171,17 +175,18 @@ export const SandboxBrowser: React.FC<SandboxBrowserProps> = ({
           }`}
         >
           <span className="text-gray-400 text-[11px]">Sort:</span>
-          <button
-            onClick={() =>
-              onUpdateState((prev) => ({
-                ...prev,
-                sortBy: prev.sortBy === 'rating' ? 'featured' : 'rating',
-              }))
-            }
-            className="px-2 py-0.5 rounded text-[11px] font-medium bg-[#141824] text-gray-200 border border-[#222738] hover:border-gray-500"
-          >
-            {sandboxState.ratingLabelAdaptive === 'reviews' ? 'Reviews' : 'Customer Rating'}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <SlidersHorizontal className="w-3 h-3 text-gray-500" />
+            <select
+              value={sandboxState.sortBy}
+              onChange={(e) => onUpdateState((prev) => ({ ...prev, sortBy: e.target.value as SandboxState['sortBy'] }))}
+              className="bg-[#141824] text-gray-200 border border-[#222738] rounded px-2 py-0.5 text-[11px] outline-none"
+            >
+              <option value="featured">Featured</option>
+              <option value="rating">Rating</option>
+              <option value="price_low">Price: Low</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -298,14 +303,15 @@ export const SandboxBrowser: React.FC<SandboxBrowserProps> = ({
                   Cart ({cartTotalItems})
                 </h4>
               </div>
-              <button
-                onClick={() =>
-                  onUpdateState((prev) => ({ ...prev, cartOpen: false }))
-                }
-                className="text-gray-400 hover:text-white p-1"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => onUpdateState((prev) => ({ ...prev, cart: [] }))} className="text-gray-500 hover:text-rose-300 p-1" title="Clear cart"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button
+                  onClick={() => onUpdateState((prev) => ({ ...prev, cartOpen: false }))}
+                  className="text-gray-400 hover:text-white p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             <div className="py-2.5 space-y-2 overflow-y-auto max-h-[360px]">
@@ -315,11 +321,13 @@ export const SandboxBrowser: React.FC<SandboxBrowserProps> = ({
                   className="p-2 rounded bg-[#121622] border border-[#202536] text-xs"
                 >
                   <div className="font-semibold text-white truncate">{item.product.name}</div>
-                  <div className="flex justify-between items-center text-gray-400 mt-1">
-                    <span>Qty: {item.quantity}</span>
-                    <span className="font-mono text-blue-400 font-semibold">
-                      ₹{(item.product.price * item.quantity).toLocaleString('en-IN')}
-                    </span>
+                  <div className="flex justify-between items-center text-gray-400 mt-1 gap-2">
+                    <div className="flex items-center gap-1 rounded border border-[#222738] bg-[#0d1017]">
+                      <button onClick={() => onUpdateState((prev) => ({ ...prev, cart: prev.cart.map((x) => x.product.id === item.product.id ? { ...x, quantity: Math.max(0, x.quantity - 1) } : x).filter((x) => x.quantity > 0) }))} className="p-1 hover:text-white"><Minus className="w-3 h-3" /></button>
+                      <span className="min-w-4 text-center text-[10px]">{item.quantity}</span>
+                      <button onClick={() => onUpdateState((prev) => ({ ...prev, cart: prev.cart.map((x) => x.product.id === item.product.id ? { ...x, quantity: x.quantity + 1 } : x) }))} className="p-1 hover:text-white"><Plus className="w-3 h-3" /></button>
+                    </div>
+                    <span className="font-mono text-blue-400 font-semibold">₹{(item.product.price * item.quantity).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               ))}
