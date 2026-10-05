@@ -113,7 +113,10 @@ export default function App() {
     agentStatus === 'VERIFYING';
 
   const handleRunTask = async (goalOverride?: string) => {
-    const goal = (goalOverride ?? taskInput).trim();
+    // Keep this handler defensive: even if a browser/event callback is ever
+    // passed here accidentally, RUN TASK must never crash on `.trim()`.
+    const goalSource = typeof goalOverride === 'string' ? goalOverride : taskInput;
+    const goal = goalSource.trim();
     // Guard both the ref and visible status so a stale execution state can never
     // make RUN TASK appear unresponsive after a failed/interrupted run.
     if (!goal || executionRef.current || isRunning) return;

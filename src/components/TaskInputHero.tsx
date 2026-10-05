@@ -104,7 +104,7 @@ export const TaskInputHero: React.FC<TaskInputHeroProps> = ({
             {!isRunning ? (
               <button
                 type="button"
-                onClick={onRunTask}
+                onClick={() => onRunTask()}
                 className="px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
               >
                 <span>RUN TASK</span>
